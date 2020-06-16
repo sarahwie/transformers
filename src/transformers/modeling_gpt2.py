@@ -344,7 +344,6 @@ class GPT2Model(GPT2PreTrainedModel):
         self.output_attentions = config.output_attentions
 
         self.wte = nn.Embedding(config.vocab_size, config.n_embd)
-        self.wse = nn.Embedding(4, config.n_embd)
         self.wpe = nn.Embedding(config.n_positions, config.n_embd)
         self.drop = nn.Dropout(config.embd_pdrop)
         self.h = nn.ModuleList([Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)])
@@ -410,7 +409,7 @@ class GPT2Model(GPT2PreTrainedModel):
         last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
 
         """
-        assert token_type_ids is not None
+
         # If using past key value states, only the last tokens
         # should be given as an input
         if past is not None:
@@ -477,7 +476,7 @@ class GPT2Model(GPT2PreTrainedModel):
             inputs_embeds = self.wte(input_ids)
         position_embeds = self.wpe(position_ids)
         if token_type_ids is not None:
-            token_type_embeds = self.wse(token_type_ids)
+            token_type_embeds = self.wte(token_type_ids)
         else:
             token_type_embeds = 0
         hidden_states = inputs_embeds + position_embeds + token_type_embeds
@@ -543,12 +542,12 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
     def get_output_embeddings(self):
         return self.lm_head
 
-    def prepare_inputs_for_generation(self, input_ids, token_type_ids, past, **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, past, **kwargs):
         # only last token for inputs_ids if past is defined in kwargs
         if past:
             input_ids = input_ids[:, -1].unsqueeze(-1)
 
-        return {"input_ids": input_ids, "token_type_ids": token_type_ids, "past": past, "use_cache": kwargs["use_cache"]}
+        return {"input_ids": input_ids, "past": past, "use_cache": kwargs["use_cache"]}
 
     @add_start_docstrings_to_callable(GPT2_INPUTS_DOCSTRING)
     def forward(

@@ -769,7 +769,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
     def generate(
         self,
         input_ids=None,
-        token_type_ids=None,
         max_length=None,
         min_length=None,
         do_sample=None,
@@ -1128,7 +1127,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
         else:
             output = self._generate_no_beam_search(
                 input_ids,
-                token_type_ids,
                 cur_len=cur_len,
                 max_length=max_length,
                 min_length=min_length,
@@ -1155,7 +1153,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
     def _generate_no_beam_search(
         self,
         input_ids,
-        token_type_ids,
         cur_len,
         max_length,
         min_length,
@@ -1183,14 +1180,11 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
         unfinished_sents = input_ids.new(batch_size).fill_(1)
         sent_lengths = input_ids.new(batch_size).fill_(max_length)
 
-        curr_tokentype = torch.tensor([2], device=input_ids.device)
-
         past = encoder_outputs  # defined for encoder-decoder models, None for decoder-only models
 
         while cur_len < max_length:
-            # print(token_type_ids)
             model_inputs = self.prepare_inputs_for_generation(
-                input_ids, token_type_ids, past=past, attention_mask=attention_mask, use_cache=use_cache, **model_specific_kwargs
+                input_ids, past=past, attention_mask=attention_mask, use_cache=use_cache, **model_specific_kwargs
             )
 
             outputs = self(**model_inputs)
@@ -1241,16 +1235,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
                 tokens_to_add = next_token * unfinished_sents + (pad_token_id) * (1 - unfinished_sents)
             else:
                 tokens_to_add = next_token
-            # print(next_token.item())
-            if next_token.item() == 50264: # have generated "<|b_e|>" token
-                curr_tokentype = torch.tensor([3], device=input_ids.device)
-            # print(tokens_to_add.shape)
-            # print(curr_tokentype.shape)
 
             input_ids = torch.cat([input_ids, tokens_to_add.unsqueeze(-1)], dim=-1)
-            # print(input_ids.shape)
-            token_type_ids = torch.cat([token_type_ids, curr_tokentype.unsqueeze(-1)], dim=-1)
-            # print(token_type_ids.shape)
 
             if eos_token_id is not None:
                 eos_in_sents = tokens_to_add == eos_token_id
